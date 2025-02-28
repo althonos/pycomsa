@@ -1,0 +1,3 @@
+[submodule "vendor/CoMSA"]
+	path = vendor/CoMSA
+	url = https://github.com/refresh-bio/CoMSA
