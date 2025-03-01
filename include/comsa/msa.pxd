@@ -29,12 +29,12 @@ cdef extern from "msa.h" nogil:
             bool _fast_variant
         ) except +
 
-        bool Decompress(
+        bool DecompressFasta "Decompress"(
             vector[uint8_t] &v_compressed_data, 
             vector[string] &v_names, 
             vector[string] &v_sequences
         ) except +
-        bool Decompress(
+        bool DecompressStockholm "Decompress"(
             vector[uint8_t] &v_compressed_data, 
             vector[vector[uint8_t]] &v_meta, 
             vector[uint32_t] &v_offsets, 

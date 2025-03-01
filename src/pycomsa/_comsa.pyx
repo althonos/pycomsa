@@ -25,6 +25,7 @@ from comsa.defs cimport stockholm_family_desc_t
 # --- Python imports -----------------------------------------------------------
 
 import collections
+import contextlib
 import io
 import os
 import struct
@@ -174,19 +175,62 @@ cdef class _StockholmReader:
             length = struct.unpack(self.size_format, file.read(self.size_size))[0]
             self.data.resize(length)
             mview = PyMemoryView_FromMemory(<char*> self.data.data(), length, PyBUF_WRITE)
-            file.readinto(mview)
+            if file.readinto(mview) != length:
+                raise EOFError()
 
         msa = MSA.__new__(MSA)
         msa.id = self.families[index].ID
         msa.accession = self.families[index].AC
 
-        with nogil:
-            comp.Decompress(self.data, meta, offsets, msa.names, msa.sequences)
+        try:
+            with nogil:
+                comp.DecompressStockholm(self.data, meta, offsets, msa.names, msa.sequences)
+        except Exception as e:
+            raise ValueError("Failed to decompress data") from e
 
         return msa
 
     def keys(self):
         return self.index.keys()
+
+
+cdef class _FastaReader:
+
+    cdef FileGuard                       guard
+    cdef size_t                          length
+    cdef vector[uint8_t]                 data
+    
+    def __init__(self, object file):
+        self.guard = FileGuard(io.BufferedReader(file))
+        with self.guard as file:
+            self.length = file.seek(0, os.SEEK_END)
+        self.data.resize(self.length)
+
+    cpdef MSA family(self):
+        cdef CMSACompress            comp
+        cdef memoryview              mview
+        cdef MSA                     msa
+
+        with self.guard as file:
+            file.seek(0, os.SEEK_SET)
+            mview = PyMemoryView_FromMemory(<char*> self.data.data(), self.length, PyBUF_WRITE)
+            if file.readinto(mview) != self.length:
+                raise EOFError()
+
+        ctx_length = self.data[0]
+        assert ctx_length in (0, 1, 2, 3, 64 | 0, 64 | 1, 64 | 2, 64 | 3)
+
+        msa = MSA.__new__(MSA)
+        msa.id.clear()
+        msa.accession.clear()
+
+        try:
+            with nogil:
+                comp.DecompressFasta(self.data, msa.names, msa.sequences)
+        except Exception as e:
+            raise ValueError("Failed to decompress data") from e
+
+        return msa
 
 
 class StockholmReader(collections.abc.Sequence):
@@ -208,4 +252,76 @@ class StockholmReader(collections.abc.Sequence):
             raise IndexError(index)
         return self._reader.family(index_)
 
-    
+
+class FastaReader(collections.abc.Sequence):
+
+    def __init__(self, object file):
+        self._reader = _FastaReader(file)
+
+    def __len__(self):
+        return 1
+
+    def __getitem__(self, object index):
+        if index > 0 or index < -1:
+            raise IndexError(index)
+        return self._reader.family()
+
+
+# --- Functions ----------------------------------------------------------------
+
+def _is_context_byte(b):
+    return b in {0, 1, 2, 3, 4, 64 | 0, 64 | 1, 64 | 2, 64 | 3, 64 | 4}
+
+
+def _detect_format(file, size_format = "N"):
+    """Attempt to detect format of file (FASTA or Stockholm compressed).
+    """
+    # compute sizeof(size_t) given the provided format
+    n = struct.calcsize(size_format)
+
+    # get file length to check the loaded length for the first block
+    # is consistent
+    length = file.seek(0, os.SEEK_END)
+    file.seek(0, os.SEEK_SET)
+    peek = file.peek()
+
+    # for a Stockholm file, the file starts with the length of the first 
+    # block, so the first N byte should encode a valid length, and the
+    # byte N+1 should be a context byte
+    l = struct.unpack(size_format, peek[:n])[0]
+    is_valid_length = l < length
+    ctx_stockholm = _is_context_byte(peek[n])
+    if ctx_stockholm and is_valid_length:
+        return "stockholm"
+
+    # for a FASTA file, the file starts immediately with a compressed block,
+    # so the first byte needs to be a context byte
+    ctx_fasta = _is_context_byte(peek[0])
+    if ctx_fasta:
+        return "fasta"
+
+    # if none of these are valid, the file may have been obtained with
+    # a different architecture (size_t, endianess), or may just be invalid.
+    raise ValueError("Failed to detect format of file")
+
+
+@contextlib.contextmanager
+def open(file, mode = "r", format = "detect", size_format = "N"):
+
+    if not hasattr(file, "read"):
+        file = open(file, "rb")
+    file = io.BufferedReader(file)
+
+    if mode == "r":
+        if format == "detect":
+            format = _detect_format(file, size_format)
+        if format == "fasta":
+            return FastaReader(file)
+        elif format == "stockholm":
+            return StockholmReader(file)
+
+    elif mode == "w":
+        raise NotImplementedError
+
+    else:
+        raise ValueError(f"invalid mode: {mode!r}")
