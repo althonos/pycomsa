@@ -1,9 +1,9 @@
 # noqa: D104
 from . import _comsa
-from ._comsa import *
+from ._comsa import open, FastaReader, StockholmReader
 
 __author__ = "Martin Larralde <martin.larralde@embl.de>"
-__all__ = []
+__all__ = ["open", "FastaReader", "StockholmReader"]
 __doc__ = _comsa.__doc__
 __version__ = _comsa.__version__
 

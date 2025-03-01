@@ -19,11 +19,13 @@ from cpython.pythread cimport (
     WAIT_LOCK,
 )
 
+cimport comsa.entropy
 from comsa.msa cimport CMSACompress
 from comsa.defs cimport stockholm_family_desc_t
 
 # --- Python imports -----------------------------------------------------------
 
+import builtins
 import collections
 import contextlib
 import io
@@ -178,6 +180,9 @@ cdef class _StockholmReader:
             if file.readinto(mview) != length:
                 raise EOFError()
 
+        if not _is_context_byte(self.data[0]):
+            raise ValueError(f"Invalid context byte at offset {offset + self.size_size}: {chr(self.data[0])!r}")
+
         msa = MSA.__new__(MSA)
         msa.id = self.families[index].ID
         msa.accession = self.families[index].AC
@@ -199,7 +204,7 @@ cdef class _FastaReader:
     cdef FileGuard                       guard
     cdef size_t                          length
     cdef vector[uint8_t]                 data
-    
+
     def __init__(self, object file):
         self.guard = FileGuard(io.BufferedReader(file))
         with self.guard as file:
@@ -217,8 +222,8 @@ cdef class _FastaReader:
             if file.readinto(mview) != self.length:
                 raise EOFError()
 
-        ctx_length = self.data[0]
-        assert ctx_length in (0, 1, 2, 3, 64 | 0, 64 | 1, 64 | 2, 64 | 3)
+        if not _is_context_byte(self.data[0]):
+            raise ValueError(f"Invalid context byte at offset 0: {chr(self.data[0])!r}")
 
         msa = MSA.__new__(MSA)
         msa.id.clear()
@@ -270,7 +275,18 @@ class FastaReader(collections.abc.Sequence):
 # --- Functions ----------------------------------------------------------------
 
 def _is_context_byte(b):
-    return b in {0, 1, 2, 3, 4, 64 | 0, 64 | 1, 64 | 2, 64 | 3, 64 | 4}
+    return b in {
+        <int> comsa.entropy.tiny,
+        <int> comsa.entropy.small,
+        <int> comsa.entropy.medium,
+        <int> comsa.entropy.large,
+        <int> comsa.entropy.huge,
+        64 | <int> comsa.entropy.tiny,
+        64 | <int> comsa.entropy.small,
+        64 | <int> comsa.entropy.medium,
+        64 | <int> comsa.entropy.large,
+        64 | <int> comsa.entropy.huge
+    }
 
 
 def _detect_format(file, size_format = "N"):
@@ -285,7 +301,7 @@ def _detect_format(file, size_format = "N"):
     file.seek(0, os.SEEK_SET)
     peek = file.peek()
 
-    # for a Stockholm file, the file starts with the length of the first 
+    # for a Stockholm file, the file starts with the length of the first
     # block, so the first N byte should encode a valid length, and the
     # byte N+1 should be a context byte
     l = struct.unpack(size_format, peek[:n])[0]
@@ -309,19 +325,26 @@ def _detect_format(file, size_format = "N"):
 def open(file, mode = "r", format = "detect", size_format = "N"):
 
     if not hasattr(file, "read"):
-        file = open(file, "rb")
-    file = io.BufferedReader(file)
-
-    if mode == "r":
-        if format == "detect":
-            format = _detect_format(file, size_format)
-        if format == "fasta":
-            return FastaReader(file)
-        elif format == "stockholm":
-            return StockholmReader(file)
-
-    elif mode == "w":
-        raise NotImplementedError
-
+        file = builtins.open(file, "rb")
+        close = True
     else:
-        raise ValueError(f"invalid mode: {mode!r}")
+        file = io.BufferedReader(file)
+        close = False
+
+    try:
+        if mode == "r":
+            if format == "detect":
+                format = _detect_format(file, size_format)
+            if format == "fasta":
+                yield FastaReader(file)
+            elif format == "stockholm":
+                yield StockholmReader(file)
+
+        elif mode == "w":
+            raise NotImplementedError
+
+        else:
+            raise ValueError(f"invalid mode: {mode!r}")
+    finally:
+        if close:
+            file.close()
