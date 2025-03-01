@@ -1,6 +1,6 @@
 # noqa: D104
 from . import _comsa
-from ._comsa import decompress
+from ._comsa import *
 
 __author__ = "Martin Larralde <martin.larralde@embl.de>"
 __all__ = []

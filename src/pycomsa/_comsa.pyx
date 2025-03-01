@@ -1,6 +1,8 @@
 # coding: utf-8
 # cython: language_level=3, linetrace=True, binding=True
 
+# --- C imports ----------------------------------------------------------------
+
 from libcpp cimport bool
 from libc.stdint cimport uint8_t, uint32_t, uint64_t
 from libcpp.vector cimport vector
@@ -8,38 +10,28 @@ from libcpp.string cimport string
 
 from cpython.buffer cimport PyBUF_READ, PyBUF_WRITE
 from cpython.memoryview cimport PyMemoryView_FromMemory
+from cpython.pythread cimport (
+    PyThread_type_lock,
+    PyThread_allocate_lock,
+    PyThread_free_lock,
+    PyThread_acquire_lock,
+    PyThread_release_lock,
+    WAIT_LOCK,
+)
 
 from comsa.msa cimport CMSACompress
 from comsa.defs cimport stockholm_family_desc_t
 
+# --- Python imports -----------------------------------------------------------
 
+import collections
 import io
 import os
 import struct
 
 __version__ = PROJECT_VERSION
 
-
-def decompress(object data):
-
-    cdef CMSACompress compressor
-    cdef const uint8_t[::1] view = data
-
-    cdef vector[string] vnames
-    cdef vector[string] vseqs
-    cdef vector[uint8_t] vdata
-
-    for i in range(view.shape[0]):
-        vdata.push_back(view[i])
-
-    compressor.Decompress(
-        vdata,
-        vnames,
-        vseqs
-    )
-
-    return list(vnames), list(vseqs)
-
+# --- Classes ------------------------------------------------------------------
 
 cdef class MSA:
     cdef readonly string         id
@@ -53,76 +45,105 @@ cdef class MSA:
         self.sequences = sequences
 
 
-cdef class MSACReader:
+cdef class FileGuard:
+    """A mutex wrapping a file to avoid concurrent accesses.
+    """
+
+    cdef object             file
+    cdef PyThread_type_lock lock
+
+    def __cinit__(self):
+        self.lock = PyThread_allocate_lock()
+
+    def __init__(self, object file):
+        self.file = file
+
+    def __del__(self):
+        PyThread_free_lock(self.lock)
+
+    def __enter__(self):
+        PyThread_acquire_lock(self.lock, WAIT_LOCK)
+        return self.file
+
+    def __exit__(self, *exc_details):
+        PyThread_release_lock(self.lock)
+
+
+cdef class _StockholmReader:
 
     cdef vector[stockholm_family_desc_t] families
     cdef dict                            index
-    cdef object                          file
+    cdef FileGuard                       guard
     cdef str                             size_format
     cdef int                             size_size
+    cdef size_t                          length
+    cdef vector[uint8_t]                 data
 
     def __init__(self, object file, str size_format = 'N'):
         self.size_format = size_format
         self.size_size = struct.calcsize(size_format)
-        self.file = io.BufferedReader(file)
-        self._preload()
+        self.guard = FileGuard(io.BufferedReader(file))
 
-    def _preload(self):
+        with self.guard as file:
+            self.length = file.seek(0, os.SEEK_END)
+            self._preload(file)
+
+    def _preload(self, file):
         cdef uint64_t footer_size
         cdef uint64_t logical_file_size
 
-        logical_file_size = self.file.seek(-self.size_size, os.SEEK_END)
-        footer_size = self._load_uint(True)
-        
+        logical_file_size = file.seek(-self.size_size, os.SEEK_END)
+        footer_size = self._load_uint(file, fixed_size=True)
+
         if footer_size > logical_file_size:
             raise ValueError("Failed to parse footer size, file may be corrupted")
 
-        self.file.seek(-(<int> self.size_size + <int> footer_size), os.SEEK_END)
-        self._preload_family_descriptions(logical_file_size)
+        file.seek(-(<int> self.size_size + <int> footer_size), os.SEEK_END)
+        self._preload_family_descriptions(file, logical_file_size)
 
-    cdef uint64_t _load_uint(self, bool fixed_size = False):
+    cdef uint64_t _load_uint(self, object file, bool fixed_size = False):
         cdef uint32_t  shift   = 0
         cdef uint32_t  n_bytes = self.size_size
         cdef size_t    x       = 0
         cdef bytearray buffer  = bytearray(1)
 
         if not fixed_size:
-            if not self.file.readinto(buffer):
-                raise EOFError(self.file.tell())
+            if not file.readinto(buffer):
+                raise EOFError(f"Failed to load integer")
             n_bytes = struct.unpack('B', buffer)[0]
 
         for i in range(n_bytes):
-            if not self.file.readinto(buffer):
-                raise EOFError(self.file.tell())
+            if not file.readinto(buffer):
+                raise EOFError(f"Failed to integer")
             x += struct.unpack('B', buffer)[0] << shift
             shift += 8
 
         return x
 
-    cdef stockholm_family_desc_t _load_family_desc(self):
+    cdef stockholm_family_desc_t _load_family_desc(self, object file):
         cdef stockholm_family_desc_t fd
-        
-        fd.n_sequences = self._load_uint()
-        fd.n_columns = self._load_uint()
-        fd.raw_size = self._load_uint()
-        fd.compressed_size = self._load_uint()
-        fd.compressed_data_ptr = self._load_uint()
+
+        fd.n_sequences = self._load_uint(file)
+        fd.n_columns = self._load_uint(file)
+        fd.raw_size = self._load_uint(file)
+        fd.compressed_size = self._load_uint(file)
+        fd.compressed_data_ptr = self._load_uint(file)
         fd.ID.clear()
-        for c in iter(lambda: self.file.read(1), b'\0'):
+        for c in iter(lambda: file.read(1), b'\0'):
             fd.ID.push_back(ord(c))
         fd.AC.clear()
-        for c in iter(lambda: self.file.read(1), b'\0'):
+        for c in iter(lambda: file.read(1), b'\0'):
             fd.AC.push_back(ord(c))
-        
+
         return fd
 
-    def _preload_family_descriptions(self, int logical_file_size):
+    cdef void _preload_family_descriptions(self, object file, int logical_file_size):
         cdef stockholm_family_desc_t fd
         cdef bytearray               buffer = bytearray(1)
 
         self.families.clear()
-        while self.file.tell() < logical_file_size:
-            fd = self._load_family_desc()
+        while file.tell() < logical_file_size:
+            fd = self._load_family_desc(file)
             self.families.push_back(fd)
 
         self.index = {
@@ -137,26 +158,28 @@ cdef class MSACReader:
         cdef CMSACompress            comp
         cdef size_t                  index  = self.index[key]
         cdef size_t                  offset = self.families[index].compressed_data_ptr
-        cdef vector[uint8_t]         data
         cdef vector[vector[uint8_t]] meta
         cdef vector[uint32_t]        offsets
         cdef memoryview              mview
         cdef MSA                     msa
 
-        # NB: for some reason this here doesn't use `load_uint` 
-        #     in the original code, which makes it non-portable
-        #     i guess?
-        self.file.seek(offset, os.SEEK_SET)
-        length = struct.unpack(self.size_format, self.file.read(self.size_size))[0]    
+        with self.guard as file:
+            # NB: for some reason this here doesn't use `load_uint`
+            #     in the original code, which makes it non-portable
+            #     i guess?
+            file.seek(offset, os.SEEK_SET)
+            length = struct.unpack(self.size_format, file.read(self.size_size))[0]
+            self.data.resize(length)
+            mview = PyMemoryView_FromMemory(<char*> self.data.data(), length, PyBUF_WRITE)
+            file.readinto(mview)
 
-        data.resize(length)
-        mview = PyMemoryView_FromMemory(<char*> data.data(), length, PyBUF_WRITE)
-        self.file.readinto(mview)
-        
         msa = MSA.__new__(MSA)
         msa.id = self.families[index].ID
         msa.accession = self.families[index].AC
-        comp.Decompress(data, meta, offsets, msa.names, msa.sequences)
+
+        with nogil:
+            comp.Decompress(data, meta, offsets, msa.names, msa.sequences)
+
         return msa
 
     def __iter__(self):
@@ -166,6 +189,16 @@ cdef class MSACReader:
         return self.index.keys()
 
 
+class StockholmReader(collections.abc.Mapping):
 
+    def __init__(self, object file, str size_format = "N"):
+        self._reader = _Reader(file, size_format=size_format)
 
+    def __len__(self):
+        return self._reader.__len__()
 
+    def __getitem__(self, object item):
+        return self._reader.__getitem__(item)
+
+    def __iter__(self):
+        return self._reader.__iter__()
