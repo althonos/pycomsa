@@ -1,0 +1,1 @@
+cython_extension(_comsa LINKS comsa)
