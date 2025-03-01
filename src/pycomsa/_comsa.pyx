@@ -7,6 +7,7 @@ from libcpp cimport bool
 from libc.stdint cimport uint8_t, uint32_t, uint64_t
 from libcpp.vector cimport vector
 from libcpp.string cimport string
+from libcpp.algorithm cimport copy_n
 
 from cpython.buffer cimport PyBUF_READ, PyBUF_WRITE
 from cpython.memoryview cimport PyMemoryView_FromMemory
@@ -23,12 +24,31 @@ cimport comsa.entropy
 from comsa.msa cimport CMSACompress
 from comsa.defs cimport stockholm_family_desc_t
 
+cdef extern from * nogil:
+    # https://stackoverflow.com/a/217605
+    """
+    inline void ltrim(std::string &s) {
+        s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }));
+    }
+
+    inline void rtrim(std::string &s) {
+        s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }).base(), s.end());
+    }
+    """
+    void rtrim(string& s)
+    void ltrim(string& s)
+
 # --- Python imports -----------------------------------------------------------
 
 import builtins
 import collections
 import contextlib
 import io
+import itertools
 import os
 import struct
 
@@ -37,15 +57,36 @@ __version__ = PROJECT_VERSION
 # --- Classes ------------------------------------------------------------------
 
 cdef class MSA:
-    cdef readonly string         id
-    cdef readonly string         accession
-    cdef readonly vector[string] names
-    cdef readonly vector[string] sequences
-    cdef          vector[string] meta
+    cdef string         _id
+    cdef string         _accession
+    cdef vector[string] _names
+    cdef vector[string] _sequences
+    cdef vector[string] _meta
 
-    def __init__(self, id, accession, names, sequences):
-        self.names = names
-        self.sequences = sequences
+    def __init__(self, str id, str accession = "", object names = (), object sequences = ()):
+        self._id = to_string(id)
+        self._accession = to_string(accession)
+        for name, sequence in itertools.zip_longest(names, sequences):
+            if name is None or sequence is None:
+                raise ValueError("names and sequences must be the same length")
+            self._names.push_back(to_string(name))
+            self._sequences.push_back(to_string(sequence))
+
+    @property
+    def id(self):
+        return self._id.decode()
+
+    @property
+    def accession(self):
+        return self._accession.decode()
+
+    @property
+    def names(self):
+        return tuple(self._names)  # FIXME: implement a custom Sequence
+
+    @property
+    def sequences(self):
+        return tuple(self._sequences)  # FIXME: implement a custom Sequence
 
 
 cdef class FileGuard:
@@ -184,14 +225,20 @@ cdef class _StockholmReader:
             raise ValueError(f"Invalid context byte at offset {offset + self.size_size}: {chr(self.data[0])!r}")
 
         msa = MSA.__new__(MSA)
-        msa.id = self.families[index].ID
-        msa.accession = self.families[index].AC
+        msa._id = self.families[index].ID
+        msa._accession = self.families[index].AC
 
         try:
             with nogil:
-                comp.DecompressStockholm(self.data, meta, offsets, msa.names, msa.sequences)
+                comp.DecompressStockholm(self.data, meta, offsets, msa._names, msa._sequences)
+                # Stockholm files compress names with right-justified spaces
+                # to make it easier to decompress, but we just want the base 
+                # name
+                for i in range(msa._names.size()):
+                    rtrim(msa._names[i])
         except Exception as e:
             raise ValueError("Failed to decompress data") from e
+
 
         return msa
 
@@ -226,12 +273,17 @@ cdef class _FastaReader:
             raise ValueError(f"Invalid context byte at offset 0: {chr(self.data[0])!r}")
 
         msa = MSA.__new__(MSA)
-        msa.id.clear()
-        msa.accession.clear()
+        msa._id.clear()
+        msa._accession.clear()
 
         try:
             with nogil:
-                comp.DecompressFasta(self.data, msa.names, msa.sequences)
+                comp.DecompressFasta(self.data, msa._names, msa._sequences)
+                # FASTA files compress names with a '>' character left of
+                # the actual identifier so we can just take a substring
+                for i in range(msa._names.size()):
+                    if msa._names[i][0] == ord('>'):
+                        msa._names[i].erase(msa._names[i].begin())
         except Exception as e:
             raise ValueError("Failed to decompress data") from e
 
@@ -273,6 +325,22 @@ class FastaReader(collections.abc.Sequence):
 
 
 # --- Functions ----------------------------------------------------------------
+
+cdef string to_string(object data):
+    cdef string          output
+    cdef const char[::1] view
+    cdef size_t          i
+    if isinstance(data, str):
+        data = data.encode()
+    view = data
+    if view.flags['C_CONTIGUOUS']:
+        data.resize(view.shape[0])
+        copy_n( &view[0], view.shape[0], output.begin() )
+    else:
+        for i in range(view.shape[0]):
+            output.push_back(view[i])
+    return output
+
 
 def _is_context_byte(b):
     return b in {
