@@ -29,13 +29,9 @@ set(COMSA_SOURCES
     
     rc.h
     sub_rc.h
-    
-    lzma.h
+ 
     lzma_wrapper.cpp
     lzma_wrapper.h
-
-    lzma/base.h
-    lzma/container.h
 
     libs/zlib.h
     libs/zconf.h
@@ -73,4 +69,4 @@ endforeach()
 add_library(comsa STATIC ${COMSA_PATCHED_SOURCES})
 target_include_directories(comsa PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 set_property(TARGET comsa PROPERTY C_STANDARD 14)
-target_link_libraries(comsa lzma)
+target_link_libraries(comsa LibLZMA::LibLZMA)
