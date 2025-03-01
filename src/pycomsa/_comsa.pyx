@@ -56,12 +56,61 @@ __version__ = PROJECT_VERSION
 
 # --- Classes ------------------------------------------------------------------
 
+cdef class _MSASequences:
+    cdef readonly MSA msa
+
+    def __init__(self, MSA msa):
+        self.msa = msa
+
+    def __len__(self):
+        return self.msa._sequences.size()
+
+    def __getitem__(self, object index):
+        cdef ssize_t index_ = index
+        cdef ssize_t length = self.msa._sequences.size()
+
+        if index_ < 0:
+            index_ += length
+        if index_ < 0 or index_ >= length:
+            raise IndexError(index)
+
+        return self.msa._sequences[index_].decode()
+
+
+cdef class _MSANames:
+    cdef readonly MSA msa
+
+    def __init__(self, MSA msa):
+        self.msa = msa
+
+    def __len__(self):
+        return self.msa._names.size()
+
+    def __getitem__(self, object index):
+        cdef ssize_t index_ = index
+        cdef ssize_t length = self.msa._names.size()
+
+        if index_ < 0:
+            index_ += length
+        if index_ < 0 or index_ >= length:
+            raise IndexError(index)
+
+        return self.msa._names[index_].decode()
+
+
 cdef class MSA:
     cdef string         _id
     cdef string         _accession
     cdef vector[string] _names
     cdef vector[string] _sequences
     cdef vector[string] _meta
+
+    cdef readonly _MSASequences sequences
+    cdef readonly _MSANames     names
+
+    def __cinit__(self):
+        self.names = _MSANames(self)
+        self.sequences = _MSASequences(self)
 
     def __init__(self, str id, str accession = "", object names = (), object sequences = ()):
         self._id = to_string(id)
@@ -79,14 +128,6 @@ cdef class MSA:
     @property
     def accession(self):
         return self._accession.decode()
-
-    @property
-    def names(self):
-        return tuple(self._names)  # FIXME: implement a custom Sequence
-
-    @property
-    def sequences(self):
-        return tuple(self._sequences)  # FIXME: implement a custom Sequence
 
 
 cdef class FileGuard:
@@ -232,7 +273,7 @@ cdef class _StockholmReader:
             with nogil:
                 comp.DecompressStockholm(self.data, meta, offsets, msa._names, msa._sequences)
                 # Stockholm files compress names with right-justified spaces
-                # to make it easier to decompress, but we just want the base 
+                # to make it easier to decompress, but we just want the base
                 # name
                 for i in range(msa._names.size()):
                     rtrim(msa._names[i])
@@ -407,10 +448,8 @@ def open(file, mode = "r", format = "detect", size_format = "N"):
                 yield FastaReader(file)
             elif format == "stockholm":
                 yield StockholmReader(file)
-
         elif mode == "w":
             raise NotImplementedError
-
         else:
             raise ValueError(f"invalid mode: {mode!r}")
     finally:
