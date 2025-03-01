@@ -167,25 +167,41 @@ jobs:
         #   python-release: v3.10
         #   python-impl: PyPy
     steps:
+    - name: Configure build for amd64
+      uses: ilammy/msvc-dev-cmd@v1
+      with:
+        arch: amd64
+
+    - name: Checkout xz
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+        repository: tukaani-project/xz
+        path: vendor/xz
+
+    - name: Compile liblzma
+      run: |
+        cmake -S vendor/xz build-xz
+        cmake --build build-xz --config Release
+        cmake --install build-xz
+
     - name: Checkout code
       uses: actions/checkout@v4
       with:
         submodules: true
+
     - name: Setup Python ${{ matrix.python-version }}
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         architecture: x64
-    - name: Configure build for amd64
-      uses: ilammy/msvc-dev-cmd@v1
-      with:
-        arch: amd64
+
     - name: Install Python requirements
       run: python -m pip install -r .github/workflows/requirements.txt
     - name: Install test requirements
       run: python -m pip install -r src/pycomsa/tests/requirements.txt
     - name: Build C extension in release mode
-      run: python -m pip install -e . --no-build-isolation -v -C cmake.build-type=Release
+      run: python -m pip install -e . --no-build-isolation -v -C cmake.build-type=Release -C cmake.define.LibLZMA_ROOT='C:/Program Files (x86)/xz/'
       env:
         CMAKE_GENERATOR: Ninja
     - name: Test without coverage
