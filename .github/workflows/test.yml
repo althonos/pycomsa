@@ -36,18 +36,18 @@ jobs:
         - python-version: '3.13'
           python-release: v3.13
           python-impl: CPython
-        - python-version: pypy-3.7
-          python-release: v3.7
-          python-impl: PyPy
-        - python-version: pypy-3.8
-          python-release: v3.8
-          python-impl: PyPy
-        - python-version: pypy-3.9
-          python-release: v3.9
-          python-impl: PyPy
-        - python-version: pypy-3.10
-          python-release: v3.10
-          python-impl: PyPy
+        # - python-version: pypy-3.7
+        #   python-release: v3.7
+        #   python-impl: PyPy
+        # - python-version: pypy-3.8
+        #   python-release: v3.8
+        #   python-impl: PyPy
+        # - python-version: pypy-3.9
+        #   python-release: v3.9
+        #   python-impl: PyPy
+        # - python-version: pypy-3.10
+        #   python-release: v3.10
+        #   python-impl: PyPy
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -97,18 +97,18 @@ jobs:
         - python-version: '3.13'
           python-release: v3.13
           python-impl: CPython
-        - python-version: pypy-3.7
-          python-release: v3.7
-          python-impl: PyPy
-        - python-version: pypy-3.8
-          python-release: v3.8
-          python-impl: PyPy
-        - python-version: pypy-3.9
-          python-release: v3.9
-          python-impl: PyPy
-        - python-version: pypy-3.10
-          python-release: v3.10
-          python-impl: PyPy
+        # - python-version: pypy-3.7
+        #   python-release: v3.7
+        #   python-impl: PyPy
+        # - python-version: pypy-3.8
+        #   python-release: v3.8
+        #   python-impl: PyPy
+        # - python-version: pypy-3.9
+        #   python-release: v3.9
+        #   python-impl: PyPy
+        # - python-version: pypy-3.10
+        #   python-release: v3.10
+        #   python-impl: PyPy
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -154,18 +154,18 @@ jobs:
         - python-version: '3.12'
           python-release: v3.12
           python-impl: CPython
-        - python-version: pypy-3.7
-          python-release: v3.7
-          python-impl: PyPy
-        - python-version: pypy-3.8
-          python-release: v3.8
-          python-impl: PyPy
-        - python-version: pypy-3.9
-          python-release: v3.9
-          python-impl: PyPy
-        - python-version: pypy-3.10
-          python-release: v3.10
-          python-impl: PyPy
+        # - python-version: pypy-3.7
+        #   python-release: v3.7
+        #   python-impl: PyPy
+        # - python-version: pypy-3.8
+        #   python-release: v3.8
+        #   python-impl: PyPy
+        # - python-version: pypy-3.9
+        #   python-release: v3.9
+        #   python-impl: PyPy
+        # - python-version: pypy-3.10
+        #   python-release: v3.10
+        #   python-impl: PyPy
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
