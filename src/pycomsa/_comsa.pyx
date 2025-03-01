@@ -155,8 +155,11 @@ cdef class _StockholmReader:
         return self.families.size()
 
     def __getitem__(self, object key):
+        cdef size_t index = self.index[key]
+        return self.family(index)
+
+    cpdef MSA family(self, size_t index):
         cdef CMSACompress            comp
-        cdef size_t                  index  = self.index[key]
         cdef size_t                  offset = self.families[index].compressed_data_ptr
         cdef vector[vector[uint8_t]] meta
         cdef vector[uint32_t]        offsets
@@ -178,27 +181,31 @@ cdef class _StockholmReader:
         msa.accession = self.families[index].AC
 
         with nogil:
-            comp.Decompress(data, meta, offsets, msa.names, msa.sequences)
+            comp.Decompress(self.data, meta, offsets, msa.names, msa.sequences)
 
         return msa
-
-    def __iter__(self):
-        return map(self.__getitem__, iter(self.keys()))
 
     def keys(self):
         return self.index.keys()
 
 
-class StockholmReader(collections.abc.Mapping):
+class StockholmReader(collections.abc.Sequence):
+    """A reader of a multi-family CoMSA file.
+    """
 
     def __init__(self, object file, str size_format = "N"):
-        self._reader = _Reader(file, size_format=size_format)
+        self._reader = _StockholmReader(file, size_format=size_format)
 
     def __len__(self):
         return self._reader.__len__()
 
-    def __getitem__(self, object item):
-        return self._reader.__getitem__(item)
+    def __getitem__(self, object index):
+        cdef ssize_t length = self._reader.__len__()
+        cdef ssize_t index_ = index
+        if index_ < 0:
+            index_ += length
+        if index_ < 0 or index_ >= length:
+            raise IndexError(index)
+        return self._reader.family(index_)
 
-    def __iter__(self):
-        return self._reader.__iter__()
+    
