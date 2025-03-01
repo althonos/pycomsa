@@ -1,4 +1,4 @@
-# 🔥 PyCoMSA [![Stars](https://img.shields.io/github/stars/althonos/pycomsa.svg?style=social&maxAge=3600&label=Star)](https://github.com/althonos/pycomsa/stargazers)
+# 🗜️ PyCoMSA [![Stars](https://img.shields.io/github/stars/althonos/pycomsa.svg?style=social&maxAge=3600&label=Star)](https://github.com/althonos/pycomsa/stargazers)
 
 *Cython bindings and Python interface to [CoMSA](https://github.com/refresh-bio/CoMSA/), a compressor for multiple-sequence alignments.*
 
