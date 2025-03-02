@@ -213,18 +213,12 @@ cdef class _StockholmReader:
         fd.raw_size = self._load_uint(file)
         fd.compressed_size = self._load_uint(file)
         fd.compressed_data_ptr = self._load_uint(file)
-
-        i = file.peek().find(0)
-        assert i > 0
-
-        fd.AC = <string> file.read(i)
-        file.seek(1, os.SEEK_CUR)
-
-        j = file.peek().find(0)
-        assert j > 0
-
-        fd.AC = <string> file.read(j)
-        file.seek(1, os.SEEK_CUR)
+        fd.ID.clear()
+        for c in iter(lambda: file.read(1), b'\0'):
+            fd.ID.push_back(ord(c))
+        fd.AC.clear()
+        for c in iter(lambda: file.read(1), b'\0'):
+            fd.AC.push_back(ord(c))
 
         return fd
 
