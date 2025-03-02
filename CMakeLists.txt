@@ -12,10 +12,7 @@ set_property(GLOBAL PROPERTY PYTHON_EXTENSIONS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE
 set(CYTHON_HEADERS_DIR ${CMAKE_CURRENT_LIST_DIR}/include)
 include("src/scripts/cmake/CythonExtension.cmake")
 
-# --- Find LZMA ----------------------------------------------------------------
-
-find_package(LibLZMA REQUIRED)
-
 # --- Compile code -------------------------------------------------------------
 
+add_subdirectory(vendor/xz EXCLUDE_FROM_ALL)
 add_subdirectory(src)
