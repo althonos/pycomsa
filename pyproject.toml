@@ -66,9 +66,6 @@ free-threaded-support = false
 test-command = "python -m unittest pycomsa.tests -v"
 test-extras = ["test"]
 
-[tool.cibuildwheel.linux]
-before-all = "yum install -y xz-devel"
-
 [tool.cibuildwheel.macos]
 environment = { MACOSX_DEPLOYMENT_TARGET = "10.12" }
 
