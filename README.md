@@ -64,7 +64,7 @@ iteration.
 ```python
 import pycomsa
 
-with pycomsa.open("src/pycomsa/tests/data/trimal.sto") as reader:
+with pycomsa.open("src/pycomsa/tests/data/trimal.msac") as reader:
     print(len(reader))  # show the number of families in the file
     msa = reader[0]     # load family by positional index
     print(msa.names)     # get the list of files in the alignment
