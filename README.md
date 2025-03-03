@@ -22,9 +22,9 @@
 
 CoMSA is a compression method for multiple sequence alignments developed 
 by [Sebastian Deorowicz](https://github.com/sebastiandeorowicz) *et al.*[\[1\]](#ref1).
-It optimizes data for Lempel-Ziv compression algorithms[\[2\]](#ref2) by first computing
-a positional Burrows-Wheeler transform (pBWT)[\[3\]](#ref3) generalized for
-any alphabet.
+It compresses sequence data using a combination of positional Burrows-Wheeler transform (pBWT)[\[2\]](#ref2), weighted-frequency-count transform (WFC)[\[3\]](#ref3),
+zero-run-length-encoding transform (RLE), and a range coder [\[4\]](#ref4)
+It outperforms Lempel-Ziv compression algorithms[\[5\]](#ref5) 
 
 PyCoMSA is a Python module that provides bindings to CoMSA using 
 [Cython](https://cython.org/).
@@ -111,5 +111,7 @@ the [Zeller team](https://github.com/zellerlab).*
 ## 📚 References
 
 - <a id="ref1">\[1\]</a> Deorowicz, S., Walczyszyn, J., & Debudaj-Grabysz, A. (2019). CoMSA: Compression of protein multiple sequence alignment files. Bioinformatics, 35(2), 227–234. [doi:10.1093/bioinformatics/bty619](https://doi.org/10.1093/bioinformatics/bty619)
-- <a id="ref2">\[2\]</a> Ziv, J., & Lempel, A. (1977). A universal algorithm for sequential data compression. IEEE Transactions on Information Theory, 23(3), 337–343. IEEE Transactions on Information Theory. [doi:10.1109/TIT.1977.1055714](https://doi.org/10.1109/TIT.1977.1055714)
-- <a id="ref3">\[3\]</a> Durbin, R. (2014). Efficient haplotype matching and storage using the positional Burrows–Wheeler transform (PBWT). Bioinformatics, 30(9), 1266–1272. [doi:10.1093/bioinformatics/btu014](https://doi.org/10.1093/bioinformatics/btu014)
+- <a id="ref2">\[2\]</a> Durbin, R. (2014). Efficient haplotype matching and storage using the positional Burrows–Wheeler transform (PBWT). Bioinformatics, 30(9), 1266–1272. [doi:10.1093/bioinformatics/btu014](https://doi.org/10.1093/bioinformatics/btu014)
+- <a id="ref3">\[3\]</a> Deorowicz, S. (2002). Second step algorithms in the Burrows–Wheeler compression algorithm. Software: Practice and Experience, 32(2), 99–111. [doi:10.1002/spe.426](https://doi.org/10.1002/spe.426)
+- <a id="ref4">\[4\]</a> Salomon, D., & Motta, G. (2010). Handbook of Data Compression. Springer Science & Business Media. ISBN:978-1-84882-903-9
+- <a id="ref5">\[5\]</a> Ziv, J., & Lempel, A. (1977). A universal algorithm for sequential data compression. IEEE Transactions on Information Theory, 23(3), 337–343. IEEE Transactions on Information Theory. [doi:10.1109/TIT.1977.1055714](https://doi.org/10.1109/TIT.1977.1055714)
