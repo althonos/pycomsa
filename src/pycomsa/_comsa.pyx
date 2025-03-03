@@ -301,6 +301,12 @@ class StockholmReader(collections.abc.Sequence):
     def __init__(self, object file, str size_format = "N"):
         self._reader = _StockholmReader(file, size_format=size_format)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
     def __len__(self):
         return self._reader.__len__()
 
@@ -371,6 +377,12 @@ class FastaReader(collections.abc.Sequence):
     def __init__(self, object file):
         self._reader = _FastaReader(file)
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.close()
+
     def __len__(self):
         return 1
 
@@ -398,7 +410,7 @@ cdef class StockholmWriter:
     def __enter__(self):
         return self
 
-    def __exit__(self, *exc_details):
+    def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
     def write(self, MSA msa, bool fast = False):
