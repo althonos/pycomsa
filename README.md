@@ -37,7 +37,7 @@ The library implements or plans to implement the following features:
 - [x] Alignment decoding from FASTA or Stockholm encoded files.
 - [x] Automated detection of compressed file formats.
 - [x] Indexed access to Stockholm encoded files.
-- [ ] Compression interface for Stockholm encoded files.
+- [x] Compression interface for Stockholm encoded files.
 
 
 ## 🔧 Installing
@@ -65,8 +65,8 @@ iteration.
 import pycomsa
 
 with pycomsa.open("src/pycomsa/tests/data/trimal.msac") as reader:
-    print(len(reader))  # show the number of families in the file
-    msa = reader[0]     # load family by positional index
+    print(len(reader))   # show the number of families in the file
+    msa = reader[0]      # load family by positional index
     print(msa.names)     # get the list of files in the alignment
     print(msa.sequences) # get the list of sequences in the alignment
 ```

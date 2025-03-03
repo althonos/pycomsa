@@ -1,6 +1,9 @@
 # coding: utf-8
 # cython: language_level=3, linetrace=True, binding=True
 
+"""Bindings to CoMSA, a compressor for multiple sequence alignments.
+"""
+
 # --- C imports ----------------------------------------------------------------
 
 from libcpp cimport bool
