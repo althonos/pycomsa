@@ -22,7 +22,7 @@ class _MSANames:
 class MSA:
     def __init__(
         self,
-        id: str,
+        id: str = "",
         accession: str = "",
         names: Iterable[Union[ByteString, str]] = (),
         sequences: Iterable[Union[ByteString, str]] = (),

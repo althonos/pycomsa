@@ -102,6 +102,15 @@ cdef class _MSANames:
 
 
 cdef class MSA:
+    """A multiple sequence alignment.
+
+    Attributes:
+        names (`~collections.abc.Sequence` of `str`): The names of the 
+            sequences in the alignment.
+        sequences (`~collections.abc.Sequence` of `str`): The sequences
+            in the alignment.
+
+    """
     cdef string         _id
     cdef string         _accession
     cdef vector[string] _names
@@ -115,7 +124,46 @@ cdef class MSA:
         self.names = _MSANames(self)
         self.sequences = _MSASequences(self)
 
-    def __init__(self, str id, str accession = "", object names = (), object sequences = ()):
+    def __init__(self, object id = "", object accession = "", object names = (), object sequences = ()):
+        """__init__(self, id="", accession="", names=(), sequences=())\n--\n
+        
+        Create a new MSA object.
+       
+        Arguments:
+            id (`str`): The identifier of the alignment.
+            accession (`str`): The accesion of the alignment.
+            names (`~collections.abc.Iterable` of `str`): The names of the 
+                sequences in the alignment.
+            sequences (`~collections.abc.Iterable` of `str` or `bytes`):
+                The sequences of the alignment.
+
+        Example:
+            >>> msa = pycomsa.MSA(
+            ...     id="example_01",
+            ...     names=["Sp8", "Sp10", "Sp26", "Sp6", "Sp17", "Sp33"],
+            ...     sequences=[
+            ...         "-----GLGKVIV-YGIVLGTKSDQFSNWVVWLFPWNGLQIHMMGII",
+            ...         "-------DPAVL-FVIMLGTIT-KFS--SEWFFAWLGLEINMMVII",
+            ...         "AAAAAAAAALLTYLGLFLGTDYENFA--AAAANAWLGLEINMMAQI",
+            ...         "-----ASGAILT-LGIYLFTLCAVIS--VSWYLAWLGLEINMMAII",
+            ...         "--FAYTAPDLL-LIGFLLKTVA-TFG--DTWFQLWQGLDLNKMPVF",
+            ...         "-------PTILNIAGLHMETDI-NFS--LAWFQAWGGLEINKQAIL",
+            ...     ]
+            ... )
+
+        Raises:
+            `ValueError`: When ``names`` and ``sequences`` do not contain
+            the same number of elements, or when ``sequences`` contain
+            elements that do not all have the same length.
+
+        Note:
+            For better compatibility, all values can be given as Python
+            strings (`str`), in which case they will be UTF-8 encoded, 
+            or any object supporting the buffer-protocol (`bytes`, 
+            `bytearray`, `memoryview`, `array.array`, 
+            `pyhmmer.easel.TextSequence`, etc.).
+
+        """
         self._id = to_string(id)
         self._accession = to_string(accession)
         for name, sequence in itertools.zip_longest(names, sequences):
@@ -516,15 +564,16 @@ cdef class StockholmWriter:
 # --- Functions ----------------------------------------------------------------
 
 cdef string to_string(object data):
-    cdef string          output
-    cdef const char[::1] view
-    cdef size_t          i
+    cdef string                   output
+    cdef const unsigned char[::1] view
+    cdef size_t                   i
     if isinstance(data, str):
         data = data.encode()
     view = data
-    if view.flags['C_CONTIGUOUS']:
-        data.resize(view.shape[0])
-        copy_n( &view[0], view.shape[0], output.begin() )
+    if view.strides[0] == 1:
+        output.resize(view.shape[0])
+        if view.shape[0] > 0:
+            copy_n( &view[0], view.shape[0], output.begin() )
     else:
         for i in range(view.shape[0]):
             output.push_back(view[i])
