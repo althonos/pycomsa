@@ -10,7 +10,7 @@ cdef extern from "msa.h" nogil:
     cppclass CMSACompress:
         CMSACompress()
 
-        bool Compress(
+        bool CompressFasta "Compress"(
             vector[string] &v_names, 
             vector[string] &v_sequences, 
             vector[uint8_t] &compressed_data, 
@@ -18,7 +18,7 @@ cdef extern from "msa.h" nogil:
             size_t &comp_seq_size, 
             bool _fast_variant
         ) except +
-        bool Compress(
+        bool CompressStockholm "Compress"(
             vector[vector[uint8_t]] &v_meta, 
             vector[uint32_t] &v_offsets, 
             vector[string] &v_names, 

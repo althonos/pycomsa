@@ -365,6 +365,119 @@ class FastaReader(collections.abc.Sequence):
         return self._reader.family()
 
 
+cdef class _StockholmWriter:
+    cdef vector[stockholm_family_desc_t] families
+    cdef FileGuard                       guard
+    cdef str                             size_format
+    cdef int                             size_size
+
+    def __init__(self, object file, str size_format = "N"):
+        self.guard = FileGuard(io.BufferedWriter(file))
+        self.size_format = size_format
+        self.size_size = struct.calcsize(size_format)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_details):
+        self.close()
+
+    def write(self, MSA msa, bool fast = False):
+        cdef CMSACompress            comp
+        cdef vector[uint8_t]         data
+        cdef vector[vector[uint8_t]] metadata
+        cdef vector[string]          names
+        cdef size_t                  comp_text_size
+        cdef size_t                  comp_seq_size
+        cdef size_t                  offset
+        cdef memoryview              mem
+
+        # copy and adjust names
+        m = 0
+        for name in msa._names:
+            m = max(m, name.size())
+            names.emplace_back(name)
+        for i in range(names.size()):
+            names[i].insert(names[i].end(), <size_t> (m + 1 - names[i].size()), <char> ord(' '))
+
+        # add stockholm header
+        metadata.resize(1)
+        for c in b"# STOCKHOLM 1.0":
+            metadata[0].push_back(c)
+
+        comp.CompressStockholm(
+            metadata,
+            vector[uint32_t](),
+            names,
+            msa._sequences,
+            data,
+            comp_text_size,
+            comp_seq_size,
+            fast,
+        )
+
+        with self.guard as file:
+            offset = file.tell()
+            mem = PyMemoryView_FromMemory(<char*> data.data(), data.size(), PyBUF_READ)
+            file.write(struct.pack(self.size_format, data.size()))
+            file.write(mem)
+
+        self.families.push_back(stockholm_family_desc_t(
+            msa._sequences.size(),
+            0 if msa._sequences.empty() else msa._sequences.front().size(),
+            0, # TODO: orig_size
+            comp_text_size + comp_seq_size,
+            offset,
+            msa._id,
+            msa._accession,
+        ))
+
+    def close(self):
+        self._write_footer()
+        with self.guard as file:
+            file.detach()
+
+    cdef size_t _write_uint(self, file, size_t x, bool fixed_size = False):
+        cdef uint8_t n_bytes = 0
+        cdef size_t  t
+
+        if fixed_size:
+            n_bytes = self.size_size
+        else:
+            while t > 0:
+                n_bytes += 1
+                t >>= 8
+            file.write(struct.pack('B', n_bytes))
+
+        for i in range(n_bytes):
+            file.write(struct.pack('B', x & 0xff))
+            x >>= 8
+
+        return n_bytes + 0 if fixed_size else 1
+
+    cdef size_t _write_fd(self, file, stockholm_family_desc_t& fd):
+        cdef size_t n = 0
+        n += self._write_uint(file, fd.n_sequences)
+        n += self._write_uint(file, fd.n_columns)
+        n += self._write_uint(file, fd.raw_size)
+        n += self._write_uint(file, fd.compressed_size)
+        n += self._write_uint(file, fd.compressed_data_ptr)
+        n += file.write(fd.ID)
+        n += file.write(fd.AC)
+        return n
+
+    cdef void _write_footer(self):
+        with self.guard as file:
+            offset = file.tell()
+            for fd in self.families:
+                self._write_fd(file, fd)
+            after = file.tell()
+
+            print(f"{after=} {offset=}")
+            self._write_uint(file, after - offset, fixed_size = True)
+
+
+
 # --- Functions ----------------------------------------------------------------
 
 cdef string to_string(object data):
