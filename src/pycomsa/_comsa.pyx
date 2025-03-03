@@ -54,7 +54,7 @@ import struct
 
 __version__ = PROJECT_VERSION
 
-# --- Classes ------------------------------------------------------------------
+# --- MSA ----------------------------------------------------------------------
 
 cdef class _MSASequences:
     cdef readonly MSA msa
@@ -130,6 +130,8 @@ cdef class MSA:
         return self._accession.decode()
 
 
+# --- FileGuard ----------------------------------------------------------------
+
 cdef class FileGuard:
     """A mutex wrapping a file to avoid concurrent accesses.
     """
@@ -153,6 +155,8 @@ cdef class FileGuard:
     def __exit__(self, *exc_details):
         PyThread_release_lock(self.lock)
 
+
+# --- StockholmReader ----------------------------------------------------------
 
 cdef class _StockholmReader:
 
@@ -243,6 +247,10 @@ cdef class _StockholmReader:
         cdef size_t index = self.index[key]
         return self.family(index)
 
+    def close(self):
+        with self.guard as file:
+            file.detach()
+
     cpdef MSA family(self, size_t index):
         cdef CMSACompress            comp
         cdef size_t                  offset = self.families[index].compressed_data_ptr
@@ -280,12 +288,35 @@ cdef class _StockholmReader:
         except Exception as e:
             raise ValueError("Failed to decompress data") from e
 
-
         return msa
 
     def keys(self):
         return self.index.keys()
 
+
+class StockholmReader(collections.abc.Sequence):
+    """A reader of a multi-family CoMSA file.
+    """
+
+    def __init__(self, object file, str size_format = "N"):
+        self._reader = _StockholmReader(file, size_format=size_format)
+
+    def __len__(self):
+        return self._reader.__len__()
+
+    def __getitem__(self, object index):
+        cdef ssize_t length = self._reader.__len__()
+        cdef ssize_t index_ = index
+        if index_ < 0:
+            index_ += length
+        if index_ < 0 or index_ >= length:
+            raise IndexError(index)
+        return self._reader.family(index_)
+
+    def close(self):
+        self._reader.close()
+
+# --- FastaReader --------------------------------------------------------------
 
 cdef class _FastaReader:
 
@@ -298,6 +329,10 @@ cdef class _FastaReader:
         with self.guard as file:
             self.length = file.seek(0, os.SEEK_END)
         self.data.resize(self.length)
+
+    def close(self):
+        with self.guard as file:
+            file.detach()
 
     cpdef MSA family(self):
         cdef CMSACompress            comp
@@ -331,26 +366,6 @@ cdef class _FastaReader:
         return msa
 
 
-class StockholmReader(collections.abc.Sequence):
-    """A reader of a multi-family CoMSA file.
-    """
-
-    def __init__(self, object file, str size_format = "N"):
-        self._reader = _StockholmReader(file, size_format=size_format)
-
-    def __len__(self):
-        return self._reader.__len__()
-
-    def __getitem__(self, object index):
-        cdef ssize_t length = self._reader.__len__()
-        cdef ssize_t index_ = index
-        if index_ < 0:
-            index_ += length
-        if index_ < 0 or index_ >= length:
-            raise IndexError(index)
-        return self._reader.family(index_)
-
-
 class FastaReader(collections.abc.Sequence):
 
     def __init__(self, object file):
@@ -364,8 +379,12 @@ class FastaReader(collections.abc.Sequence):
             raise IndexError(index)
         return self._reader.family()
 
+    def close(self):
+        self._reader.close()
 
-cdef class _StockholmWriter:
+# --- StockholmWriter ----------------------------------------------------------
+
+cdef class StockholmWriter:
     cdef vector[stockholm_family_desc_t] families
     cdef FileGuard                       guard
     cdef str                             size_format
@@ -405,6 +424,7 @@ cdef class _StockholmWriter:
         for c in b"# STOCKHOLM 1.0":
             metadata[0].push_back(c)
 
+        # compress data
         comp.CompressStockholm(
             metadata,
             vector[uint32_t](),
@@ -416,12 +436,15 @@ cdef class _StockholmWriter:
             fast,
         )
 
+        # write data to file
         with self.guard as file:
             offset = file.tell()
+            # FIXME: avoid using memoryview for PyPy support
             mem = PyMemoryView_FromMemory(<char*> data.data(), data.size(), PyBUF_READ)
             file.write(struct.pack(self.size_format, data.size()))
             file.write(mem)
 
+        # record metadata about current family
         self.families.push_back(stockholm_family_desc_t(
             msa._sequences.size(),
             0 if msa._sequences.empty() else msa._sequences.front().size(),
@@ -472,10 +495,7 @@ cdef class _StockholmWriter:
             for fd in self.families:
                 self._write_fd(file, fd)
             after = file.tell()
-
-            print(f"{after=} {offset=}")
             self._write_uint(file, after - offset, fixed_size = True)
-
 
 
 # --- Functions ----------------------------------------------------------------
@@ -544,27 +564,50 @@ def _detect_format(file, size_format = "N"):
 
 
 @contextlib.contextmanager
-def open(file, mode = "r", format = "detect", size_format = "N"):
-
-    if not hasattr(file, "read"):
-        file = builtins.open(file, "rb")
-        close = True
-    else:
-        file = io.BufferedReader(file)
-        close = False
-
-    try:
-        if mode == "r":
-            if format == "detect":
-                format = _detect_format(file, size_format)
-            if format == "fasta":
-                yield FastaReader(file)
-            elif format == "stockholm":
-                yield StockholmReader(file)
-        elif mode == "w":
-            raise NotImplementedError
+def open(file, str mode = "r", str format = None, str size_format = "N"):
+    if mode == "r":
+        if not hasattr(file, "read"):
+            file = builtins.open(file, "rb")
+            close_file = True
         else:
-            raise ValueError(f"invalid mode: {mode!r}")
-    finally:
-        if close:
-            file.close()
+            file = io.BufferedReader(file)
+            close_file = False
+        try:
+            if format is None:
+                format = _detect_format(file, size_format=size_format)
+            if format == "fasta":
+                reader = FastaReader(file, size_format=size_format)
+            elif format == "stockholm":
+                reader = StockholmReader(file, size_format=size_format)
+            else:
+                raise ValueError(f"invalid format: {format!r}")
+            yield reader
+        finally:
+            reader.close()
+            if close_file:
+                file.close()
+    elif mode == "w":
+        if not hasattr(file, "write"):
+            file = builtins.open(file, "rw")
+            close_file = True
+        else:
+            file = io.BufferedWriter(file)
+            close_file = False
+        try:
+            if format is None:
+                format = "stockholm"
+            if format == "fasta":
+                raise NotImplementedError
+            elif format == "stockholm":
+                writer = StockholmWriter(file, size_format=size_format)
+            else:
+                raise ValueError(f"invalid format: {format!r}")
+            yield writer
+        finally:
+            writer.close()
+            if close_file:
+                file.close()
+    else:
+        raise ValueError(f"invalid mode: {mode!r}")
+
+   
