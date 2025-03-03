@@ -55,7 +55,7 @@ PyCoMSA |Stars|
    :class: dark-light
 
 .. |Mirror| image:: https://img.shields.io/badge/mirror-LUMC-003EAA.svg?maxAge=3600&style=flat-square
-   :target:https://git.lumc.nl/mflarralde/pycomsa/
+   :target: https://git.lumc.nl/mflarralde/pycomsa/
    :class: dark-light
 
 .. |Issues| image:: https://img.shields.io/github/issues/althonos/pycomsa.svg?style=flat-square&maxAge=600
@@ -96,9 +96,24 @@ internals, which has the following advantages:
       Build alignments to compress as Python `str` or byte-like objects, no 
       need for intermediate files.
 
-   .. grid-item-card:: Flexible format
+   .. grid-item-card:: :fas:`text-slash` Flexible format
+      
+      Pick the file format based on your needs, and not based on the 
+      file format of the original aligmnment.
 
-   .. grid-item-card:: Better portability
+   .. grid-item-card:: :fas:`arrow-right-arrow-left` Better portability
+
+      Support reading and writing files for any architecture, and not
+      just native one as the original CoMSA.
+
+   .. grid-item-card:: :fas:`check` Compatible
+
+      Load files generated with PyCoMSA using CoMSA, as both are using 
+      the same compression method.
+
+   .. grid-item-card:: :fas:`toolbox` Feature-complete
+
+      Access all the features of the original CLI through the :doc:`Python API <api/index>`.
 
 
 

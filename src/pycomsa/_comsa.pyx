@@ -105,7 +105,7 @@ cdef class MSA:
     """A multiple sequence alignment.
 
     Attributes:
-        names (`~collections.abc.Sequence` of `str`): The names of the 
+        names (`~collections.abc.Sequence` of `str`): The names of the
             sequences in the alignment.
         sequences (`~collections.abc.Sequence` of `str`): The sequences
             in the alignment.
@@ -126,13 +126,13 @@ cdef class MSA:
 
     def __init__(self, object id = "", object accession = "", object names = (), object sequences = ()):
         """__init__(self, id="", accession="", names=(), sequences=())\n--\n
-        
+
         Create a new MSA object.
-       
+
         Arguments:
             id (`str`): The identifier of the alignment.
             accession (`str`): The accesion of the alignment.
-            names (`~collections.abc.Iterable` of `str`): The names of the 
+            names (`~collections.abc.Iterable` of `str`): The names of the
                 sequences in the alignment.
             sequences (`~collections.abc.Iterable` of `str` or `bytes`):
                 The sequences of the alignment.
@@ -153,14 +153,14 @@ cdef class MSA:
 
         Raises:
             `ValueError`: When ``names`` and ``sequences`` do not contain
-            the same number of elements, or when ``sequences`` contain
-            elements that do not all have the same length.
+                the same number of elements, or when ``sequences`` contain
+                elements that do not all have the same length.
 
         Note:
             For better compatibility, all values can be given as Python
-            strings (`str`), in which case they will be UTF-8 encoded, 
-            or any object supporting the buffer-protocol (`bytes`, 
-            `bytearray`, `memoryview`, `array.array`, 
+            strings (`str`), in which case they will be UTF-8 encoded,
+            or any object supporting the buffer-protocol (`bytes`,
+            `bytearray`, `memoryview`, `array.array`,
             `pyhmmer.easel.TextSequence`, etc.).
 
         """
@@ -174,10 +174,14 @@ cdef class MSA:
 
     @property
     def id(self):
+        """`str`: The identifier of the MSA.
+        """
         return self._id.decode()
 
     @property
     def accession(self):
+        """`str`: The accession of the MSA.
+        """
         return self._accession.decode()
 
 
@@ -346,10 +350,21 @@ cdef class _StockholmReader:
 
 
 class StockholmReader(collections.abc.Sequence):
-    """A reader of a multi-family CoMSA file.
+    """A reader for CoMSA-compressed Stockholm files.
     """
 
     def __init__(self, object file, str size_format = "N"):
+        """Create a new Stockholm reader.
+
+        Arguments:
+            file (`~io.IOBase`): A file-like object open for reading
+                in binary mode, with support for `~io.IOBase.seek`.
+            size_format (`str`): The format to use for reading ``size_t`` 
+                values, as a `struct` format specifier. The default 
+                ``N`` uses the native ``size_t`` type, but other formats 
+                can be given for cross-platform compatibility.
+
+        """
         self._reader = _StockholmReader(file, size_format=size_format)
 
     def __enter__(self):
@@ -371,6 +386,8 @@ class StockholmReader(collections.abc.Sequence):
         return self._reader.family(index_)
 
     def close(self):
+        """Close the reader and detach the file-like object.
+        """
         self._reader.close()
 
 # --- FastaReader --------------------------------------------------------------
@@ -424,8 +441,17 @@ cdef class _FastaReader:
 
 
 class FastaReader(collections.abc.Sequence):
+    """A reader for CoMSA-compressed FASTA files.
+    """
 
     def __init__(self, object file):
+        """Create a new FASTA reader.
+
+        Arguments:
+            file (`~io.IOBase`): A file-like object open for reading
+                in binary mode, with support for `~io.IOBase.seek`.
+
+        """
         self._reader = _FastaReader(file)
 
     def __enter__(self):
@@ -443,17 +469,32 @@ class FastaReader(collections.abc.Sequence):
         return self._reader.family()
 
     def close(self):
+        """Close the reader and detach the file-like object.
+        """
         self._reader.close()
 
 # --- StockholmWriter ----------------------------------------------------------
 
 cdef class StockholmWriter:
+    """A writer for CoMSA-compressed Stockholm files.
+    """
     cdef vector[stockholm_family_desc_t] families
     cdef FileGuard                       guard
     cdef str                             size_format
     cdef int                             size_size
 
     def __init__(self, object file, str size_format = "N"):
+        """Create a new Stockholm writer.
+
+        Arguments:
+            file (`~io.IOBase`): A file-like object open for writing
+                in binary mode.
+            size_format (`str`): The format to use for writing ``size_t``
+                values, as a `struct` format specifier. The default ``N`` 
+                uses the native ``size_t`` type, but other formats can 
+                be given for cross-platform compatibility.
+
+        """
         self.guard = FileGuard(io.BufferedWriter(file))
         self.size_format = size_format
         self.size_size = struct.calcsize(size_format)
@@ -465,6 +506,17 @@ cdef class StockholmWriter:
         self.close()
 
     def write(self, MSA msa, bool fast = False):
+        """Write a MSA to the compressed file.
+
+        Arguments:
+            msa (`~pycomsa.MSA`): The multiple sequence alignment
+                to compress and append to the file.
+            fast (`bool`): Set to `True` to use *move to front* (MTF)
+                instead of *weighted frequency count* (WFC) in the
+                compression pipeline. This accelerates compression
+                and decompression at the cost of compression efficiency.
+
+        """
         cdef CMSACompress            comp
         cdef vector[uint8_t]         data
         cdef vector[vector[uint8_t]] metadata
@@ -629,6 +681,34 @@ def _detect_format(file, size_format = "N"):
 
 @contextlib.contextmanager
 def open(file, str mode = "r", str format = None, str size_format = "N"):
+    """Open a file for reading or for writing with CoMSA.
+
+    Arguments:
+        file (`str`, `~os.PathLike`, or `~io.IOBase`): Either the
+            path to a file to be opened, or a file-like object in binary
+            mode that supports `~io.IOBase.seek`.
+        mode (``r`` or ``w``): The mode with which to open the file,
+            similarly to `~builtins.open`.
+        format (``fasta``, ``stockholm`` or ``None``): The format of
+            the file to be read or written. If `None` given (the default),
+            the format will be auto-detected while reading, or set to
+            ``stockholm`` when writing.
+        size_format (`str`): The format to use for reading and writing
+            ``size_t`` values, as a `struct` format specifier. The default
+            ``N`` uses the native ``size_t`` type, but other formats can
+            be given for cross-platform compatibility.
+
+    Example:
+        >>> with pycomsa.open("trimal.msac") as reader:
+        ...     msa = reader[0]
+        ...     len(msa.sequences)
+        50
+
+    Raises:
+        `ValueError`: When given an invalid argument, or when the file
+            format could not be auto-detected from the file contents.
+
+    """
     if mode == "r":
         if not hasattr(file, "read"):
             file = builtins.open(file, "rb")
@@ -674,4 +754,3 @@ def open(file, str mode = "r", str format = None, str size_format = "N"):
     else:
         raise ValueError(f"invalid mode: {mode!r}")
 
-   

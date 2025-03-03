@@ -74,9 +74,9 @@ the file allowing random access.
     
     `pycomsa` attempts a few checks before loading data, but since CoMSA 
     doesn't emit files with magic bytes, it is not possible to automatically
-    detect the format of each file. To mitigate this, the `open` function
-    and the `StockholmReader` and `StockholmWriter` types support a 
-    ``size_format`` attribute, as a `struct` format character, which 
+    detect the format of each file. To mitigate this, the `~pycomsa.open` function
+    and the `~pycomsa.StockholmReader` and `~pycomsa.StockholmWriter` types 
+    support a ``size_format`` parameter, as a `struct` format character, which 
     allows controlling at runtime in which format the block and footer size
     are loaded.
 
