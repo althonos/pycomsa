@@ -535,21 +535,38 @@ cdef class StockholmWriter:
             names[i].insert(names[i].end(), <size_t> (m + 1 - names[i].size()), <char> ord(' '))
 
         # add stockholm header
+        # NOTE: this is not stricty needed to put in the file, but without
+        #       this header the CoMSA decompressor (`CoMSA Sd`) will not 
+        #       emit a valid Stockholm file. Out `StockholmReader` however
+        #       ignores the metadata block.
         metadata.resize(1)
-        for c in b"# STOCKHOLM 1.0":
+        for c in b"# STOCKHOLM 1.0\n":
             metadata[0].push_back(c)
+        if not msa._id.empty():
+            for c in b"# GF ID ":
+                metadata[0].push_back(c)
+            for i in range(msa._id.size()):
+                metadata[0].push_back(msa._id[i])
+            metadata[0].push_back(ord(b"\n"))
+        if not msa._accession.empty():
+            for c in b"# GF AC ":
+                metadata[0].push_back(c)
+            for i in range(msa._accession.size()):
+                metadata[0].push_back(msa._accession[i])
+            metadata[0].push_back(ord(b"\n"))
 
         # compress data
-        comp.CompressStockholm(
-            metadata,
-            vector[uint32_t](),
-            names,
-            msa._sequences,
-            data,
-            comp_text_size,
-            comp_seq_size,
-            fast,
-        )
+        with nogil:
+            comp.CompressStockholm(
+                metadata,
+                vector[uint32_t](),
+                names,
+                msa._sequences,
+                data,
+                comp_text_size,
+                comp_seq_size,
+                fast,
+            )
 
         # write data to file
         with self.guard as file:
