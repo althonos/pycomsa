@@ -1,0 +1,44 @@
+diff --git a/src/transpose.cpp b/src/transpose.cpp
+index 74d0dc7..1a893f8 100644
+--- a/src/transpose.cpp
++++ b/src/transpose.cpp
+@@ -10,7 +10,10 @@
+ #include "transpose.h"
+ #include <iostream>
+ #include <algorithm>
++
++#ifdef __SSE__
+ #include <xmmintrin.h>
++#endif
+ 
+ // *******************************************************************************************
+ // Perform transposition of a matrix
+@@ -45,8 +48,10 @@ void CTranspose::forward()
+ 
+ 		for (size_t j = 0; j < in_n_rows; ++j)
+ 		{
++#ifdef __SSE__
+ 			if (j + PREFETCH_STEP < in_n_rows)
+ 				_mm_prefetch((char*)(*v_sequences)[j + PREFETCH_STEP].data() + i, _MM_HINT_T0);
++#endif
+ 
+ 			for (int ii = i; ii > i_end; --ii)
+ 				v_str[ii % BLOCK_SIZE][j] = (*v_sequences)[j][ii];
+@@ -91,8 +96,10 @@ void CTranspose::reverse()
+ 		{
+ 			for (size_t j = 0; j < n_sequences; ++j)
+ 			{
++#ifdef __SSE__
+ 				if (j + PREFETCH_STEP < n_sequences)
+ 					_mm_prefetch((char*)(*v_sequences)[j + PREFETCH_STEP].data() + i, _MM_HINT_T0);
++#endif
+ 
+ 				for (int ii = i; ii < i_end; ++ii)
+ 					(*v_sequences)[j][ii] = v_src[ii % BLOCK_SIZE][j];
+@@ -168,4 +175,4 @@ void CTranspose::operator()()
+ 		copy_reverse();
+ }
+ 
+-// EOF
+\ No newline at end of file
++// EOF
