@@ -4,9 +4,9 @@ set(COMSA_SOURCES
 
     transpose.cpp
     transpose.h
-    
+
     defs.h
-    
+
     mtf.cpp
     mtf.h
 
@@ -17,7 +17,7 @@ set(COMSA_SOURCES
     pbwt.h
 
     ss.h
-    
+
     wfc.cpp
     wfc.h
 
@@ -26,10 +26,10 @@ set(COMSA_SOURCES
 
     entropy.cpp
     entropy.h
-    
+
     rc.h
     sub_rc.h
- 
+
     lzma_wrapper.cpp
     lzma_wrapper.h
 
@@ -38,31 +38,31 @@ set(COMSA_SOURCES
 )
 
 foreach(_file IN ITEMS ${COMSA_SOURCES})
-    # if(EXISTS ${PROJECT_SOURCE_DIR}/patches/${_file}.patch)
-    #     add_custom_command(
-    #         OUTPUT 
-    #             ${_file}
-    #         COMMENT
-    #             "Patching ${_file}"
-    #         COMMAND
-    #             ${Python_EXECUTABLE} ${PROJECT_SOURCE_DIR}/src/scripts/apply_patch.py 
-    #                 --input ${PROJECT_SOURCE_DIR}/vendor/comsa/src/${_file} 
-    #                 --patch ${PROJECT_SOURCE_DIR}/patches/${_file}.patch
-    #                 --output ${CMAKE_CURRENT_BINARY_DIR}/${_file}
-    #         DEPENDS
-    #             ${PROJECT_SOURCE_DIR}/vendor/comsa/src/${_file}
-    #             ${PROJECT_SOURCE_DIR}/patches/${_file}.patch
-    #     )
-    # else()
+    if(EXISTS ${PROJECT_SOURCE_DIR}/patches/${_file}.patch)
         add_custom_command(
-            OUTPUT 
+            OUTPUT
+                ${_file}
+            COMMENT
+                "Patching ${_file}"
+            COMMAND
+                ${Python_EXECUTABLE} ${PROJECT_SOURCE_DIR}/src/scripts/apply_patch.py
+                    --input ${PROJECT_SOURCE_DIR}/vendor/CoMSA/src/${_file}
+                    --patch ${PROJECT_SOURCE_DIR}/patches/${_file}.patch
+                    --output ${CMAKE_CURRENT_BINARY_DIR}/${_file}
+            DEPENDS
+                ${PROJECT_SOURCE_DIR}/vendor/CoMSA/src/${_file}
+                ${PROJECT_SOURCE_DIR}/patches/${_file}.patch
+        )
+    else()
+        add_custom_command(
+            OUTPUT
                 ${_file}
             COMMAND
                 cmake -E copy ${PROJECT_SOURCE_DIR}/vendor/CoMSA/src/${_file} ${CMAKE_CURRENT_BINARY_DIR}/${_file}
             DEPENDS
                 ${PROJECT_SOURCE_DIR}/vendor/CoMSA/src/${_file}
         )
-    # endif()
+    endif()
     set(COMSA_PATCHED_SOURCES ${COMSA_PATCHED_SOURCES} ${CMAKE_CURRENT_BINARY_DIR}/${_file})
 endforeach()
 
