@@ -65,6 +65,7 @@ build-verbosity = 1
 free-threaded-support = false
 test-command = "python -m unittest pycomsa.tests -v"
 test-extras = ["test"]
+skip = "pp*"
 
 [tool.cibuildwheel.macos]
 environment = { MACOSX_DEPLOYMENT_TARGET = "10.12" }
