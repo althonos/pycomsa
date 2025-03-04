@@ -20,19 +20,22 @@
 
 ## 🗺️ Overview
 
-CoMSA is a compression method for multiple sequence alignments developed 
+CoMSA is a compression method for multiple sequence alignments developed
 by [Sebastian Deorowicz](https://github.com/sebastiandeorowicz) *et al.*[\[1\]](#ref1).
 It compresses sequence data using a combination of positional Burrows-Wheeler transform (pBWT)[\[2\]](#ref2), weighted-frequency-count transform (WFC)[\[3\]](#ref3),
-zero-run-length-encoding transform (RLE), and a range coder [\[4\]](#ref4)
-It outperforms Lempel-Ziv compression algorithms[\[5\]](#ref5) 
+zero-run-length-encoding transform (RLE), and a range coder[\[4\]](#ref4).
+It outperforms general-purpose Lempel-Ziv compression algorithms[\[5\]](#ref5)
+for MSA compression.
 
-PyCoMSA is a Python module that provides bindings to CoMSA using 
-[Cython](https://cython.org/).
-
+PyCoMSA is a Python module that provides bindings to CoMSA using
+[Cython](https://cython.org/).It directly interacts with the CoMSA
+internals, allowing to read files into Python objects, or write
+files directly from memory, without having to read or write intermediate,
+non-compressed files.
 
 ### 📋 Features
 
-The library implements or plans to implement the following features:
+The library implements the following features:
 
 - [x] Alignment decoding from FASTA or Stockholm encoded files.
 - [x] Automated detection of compressed file formats.
@@ -44,7 +47,7 @@ The library implements or plans to implement the following features:
 
 This project is supported on Python 3.7 and later.
 
-Until a release is made to PyPI, you will have to install the project from 
+Until a release is made to PyPI, you will have to install the project from
 source:
 
 ```console
@@ -56,8 +59,9 @@ detection by CMake.
 
 ## 💡 Example
 
-Use the `pycomsa.open` method to open a file for reading, using 
-automatic format detection. The readers implement the `Sequence`
+Use the `pycomsa.open` method to open a file for reading, using
+automatic format detection. The readers implement the
+[`Sequence`](https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence)
 interface, allowing out-of-order access in the file, or just plain
 iteration.
 
@@ -96,10 +100,10 @@ in the [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) format.
 
 ## ⚖️ License
 
-This library is provided under the 
-[GNU General Public License v3.0](https://choosealicense.com/licenses/gpl-3.0/). 
-The CoMSA code was written by [Sebastian Deorowicz](https://github.com/sebastiandeorowicz) 
-and is distributed under the terms of the GPLv3 as well. 
+This library is provided under the
+[GNU General Public License v3.0](https://choosealicense.com/licenses/gpl-3.0/).
+The CoMSA code was written by [Sebastian Deorowicz](https://github.com/sebastiandeorowicz)
+and is distributed under the terms of the GPLv3 as well.
 
 *This project is in no way not affiliated, sponsored, or otherwise endorsed
 by the [REFRESH-BIO](https://github.com/refresh-bio) laboratory. It was developed
