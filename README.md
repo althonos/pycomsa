@@ -51,16 +51,16 @@ Until a release is made to PyPI, you will have to install the project from
 source:
 
 ```console
-$ pip install git+https://github.com/althonos/pycomsa
+$ pip install pycomsa
 ```
 
-Compiling requires the `lzma` library to be installed and available for
-detection by CMake.
+Check the [*install* page](https://pycomsa.readthedocs.io/en/stable/install.html)
+of the documentation for other ways to install PyJess on your machine.
 
 ## 💡 Example
 
-Use the `pycomsa.open` method to open a file for reading, using
-automatic format detection. The readers implement the
+Use the [`pycomsa.open`](https://pycomsa.readthedocs.io/en/stable/api/functions.html#pycomsa.open) 
+method to open a file for reading, using automatic format detection. The readers implement the
 [`Sequence`](https://docs.python.org/3/library/collections.abc.html#collections.abc.Sequence)
 interface, allowing out-of-order access in the file, or just plain
 iteration.
@@ -74,6 +74,18 @@ with pycomsa.open("src/pycomsa/tests/data/trimal.msac") as reader:
     print(msa.names)     # get the list of files in the alignment
     print(msa.sequences) # get the list of sequences in the alignment
 ```
+
+To write a MSA to a compressed file, used the same function in writing mode:
+
+```python
+with pycomsa.open("test.msac", "w") as writer:
+    writer.write(msa)
+```
+
+Note that `pycomsa.open` also supports 
+[file-like objects](https://docs.python.org/3/glossary.html#term-file-object) 
+opened in [binary mode](https://docs.python.org/3/glossary.html#term-binary-file), 
+and supporting the `seek` method when reading CoMSA files.
 
 ## 💭 Feedback
 
