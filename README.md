@@ -55,7 +55,7 @@ $ pip install pycomsa
 ```
 
 Check the [*install* page](https://pycomsa.readthedocs.io/en/stable/install.html)
-of the documentation for other ways to install PyJess on your machine.
+of the documentation for other ways to install PyCoMSA on your machine.
 
 ## 💡 Example
 
