@@ -6,7 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pycomsa/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/althonos/pycomsa/compare/v0.1.2...HEAD
+
+
+## [v0.1.2] - 2026-08-26
+[v0.1.2]: https://github.com/althonos/pycomsa/compare/v0.1.1...v0.1.2
+
+### Added
+- Compilation of wheels for Windows.
+
+### Fixed
+- Remaining PyPy error not fixed in `v0.1.1`.
 
 
 ## [v0.1.1] - 2026-08-25

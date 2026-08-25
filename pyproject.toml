@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "pycomsa"
-version = "0.1.1"
+version = "0.1.2"
 description = "Cython bindings and Python interface to CoMSA, a compressor for multiple-sequence alignments."
 readme = "README.md"
 requires-python = ">=3.7"
