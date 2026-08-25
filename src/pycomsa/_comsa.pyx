@@ -313,6 +313,12 @@ cdef class _StockholmReader:
         cdef vector[uint32_t]        offsets
         cdef memoryview              mview
         cdef MSA                     msa
+        cdef int                     flags
+
+        if PYPY:
+            flags = PyBUF_READ | PyBUF_WRITE
+        else:
+            flags = PyBUF_WRITE
 
         with self.guard as file:
             # NB: for some reason this here doesn't use `load_uint`
@@ -321,7 +327,7 @@ cdef class _StockholmReader:
             file.seek(offset, os.SEEK_SET)
             length = struct.unpack(self.size_format, file.read(self.size_size))[0]
             self.data.resize(length)
-            mview = PyMemoryView_FromMemory(<char*> self.data.data(), length, PyBUF_WRITE)
+            mview = PyMemoryView_FromMemory(<char*> self.data.data(), length, flags)
             if file.readinto(mview) != length:
                 raise EOFError()
 
@@ -412,7 +418,7 @@ cdef class _FastaReader:
         cdef CMSACompress            comp
         cdef memoryview              mview
         cdef MSA                     msa
-        cdef int                     FLAGS
+        cdef int                     flags
 
         if PYPY:
             flags = PyBUF_READ | PyBUF_WRITE
