@@ -36,7 +36,7 @@ classifiers = [
 ]
 
 [project.urls]
-# "Documentation" = "https://pycomsa.readthedocs.io/en/stable/"
+"Documentation" = "https://pycomsa.readthedocs.io/en/stable/"
 "Bug Tracker" = "https://github.com/althonos/pycomsa/issues"
 "Changelog" = "https://github.com/althonos/pycomsa/blob/master/CHANGELOG.md"
 # "Coverage" = "https://codecov.io/gh/althonos/pycomsa/"
@@ -49,6 +49,7 @@ test = ["importlib-resources ; python_version < '3.9'"]
 [tool.scikit-build]
 build-dir = "build/{build_type}"
 build.targets = ["pycomsa._comsa"]
+wheel.py-api = "cp311"
 
 [tool.scikit-build.editable]
 rebuild = true
@@ -58,17 +59,17 @@ verbose = true
 if.state = "editable"
 cmake.build-type = "Debug"
 
+[[tool.scikit-build.overrides]]
+if.env.READTHEDOCS = "True"
+cmake.build-type = "Debug"
+
 [tool.cibuildwheel]
-before-build = "pip install scikit-build-core cython"
+before-build = "pip install scikit-build-core cython ninja"
 build-frontend = { name = "pip", args = ["--no-build-isolation"] }
 build-verbosity = 1
 free-threaded-support = false
 test-command = "python -m unittest pycomsa.tests -v"
 test-extras = ["test"]
-skip = "pp*"
-
-[tool.cibuildwheel.macos]
-environment = { MACOSX_DEPLOYMENT_TARGET = "10.12" }
 
 [tool.coverage.run]
 plugins = ["Cython.Coverage"]
