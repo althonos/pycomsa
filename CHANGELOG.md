@@ -6,7 +6,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 
 ## [Unreleased]
-[Unreleased]: https://github.com/althonos/pycomsa/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/althonos/pycomsa/compare/v0.1.1...HEAD
+
+
+## [v0.1.1] - 2026-08-25
+[v0.1.1]: https://github.com/althonos/pycomsa/compare/v0.1.0...v0.1.1
+
+### Added
+- Compilation of Limited API wheels for Python 3.11 and later.
+
+### Fixed
+- Documentation references ([#1](https://github.com/althonos/pycomsa/issues/1)).
+- `memoryview` protocol error in PyPy builds.
 
 
 ## [v0.1.0] - 2025-03-04

@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "pycomsa"
-version = "0.1.0"
+version = "0.1.1"
 description = "Cython bindings and Python interface to CoMSA, a compressor for multiple-sequence alignments."
 readme = "README.md"
 requires-python = ">=3.7"
@@ -64,10 +64,8 @@ if.env.READTHEDOCS = "True"
 cmake.build-type = "Debug"
 
 [tool.cibuildwheel]
-before-build = "pip install scikit-build-core cython ninja"
-build-frontend = { name = "pip", args = ["--no-build-isolation"] }
+build-frontend = { name = "pip" }
 build-verbosity = 1
-free-threaded-support = false
 test-command = "python -m unittest pycomsa.tests -v"
 test-extras = ["test"]
 
