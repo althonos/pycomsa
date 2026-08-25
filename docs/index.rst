@@ -78,7 +78,7 @@ PyCoMSA |Stars|
 Overview
 --------
 
-PyCoMSA is a Python module that provides bindings to Prodigal using
+PyCoMSA is a Python module that provides bindings to CoMSA using
 `Cython <https://cython.org/>`_. It directly interacts with the CoMSA
 internals, which has the following advantages:
 
@@ -151,12 +151,12 @@ License
 -------
 
 This library is provided under the `GNU General Public License v3.0 <https://choosealicense.com/licenses/gpl-3.0/>`_.
-The Prodigal code was written by `Sebastian Deorowicz <https://github.com/sebastiandeorowicz>`_ and is distributed under the
+The CoMSA code was written by `Sebastian Deorowicz <https://github.com/sebastiandeorowicz>`_ and is distributed under the
 terms of the GPLv3 as well. See the :doc:`Copyright Notice <guide/copyright>` section
 for the full GPLv3 license.
 
 *This project is in no way not affiliated, sponsored, or otherwise endorsed by
-the original* `Prodigal`_ *authors. It was developed by* `Martin Larralde <https://github.com/althonos>`_ 
+the original* `CoMSA`_ *authors. It was developed by* `Martin Larralde <https://github.com/althonos>`_ 
 *during his PhD project at the* `Leiden University Medical Center <https://www.lumc.nl/en/>`_
 *in the* `Zeller team <https://github.com/zellerlab>`_.
 
