@@ -412,10 +412,16 @@ cdef class _FastaReader:
         cdef CMSACompress            comp
         cdef memoryview              mview
         cdef MSA                     msa
+        cdef int                     FLAGS
+
+        if PYPY:
+            flags = PyBUF_READ | PyBUF_WRITE
+        else:
+            flags = PyBUF_WRITE
 
         with self.guard as file:
             file.seek(0, os.SEEK_SET)
-            mview = PyMemoryView_FromMemory(<char*> self.data.data(), self.length, PyBUF_WRITE)
+            mview = PyMemoryView_FromMemory(<char*> self.data.data(), self.length, flags)
             if file.readinto(mview) != self.length:
                 raise EOFError()
 
